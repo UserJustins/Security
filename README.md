@@ -52,7 +52,7 @@ public class ApplicationTest {
 
 ```
 ### (2)@JsonView注解
-不同请求返回同一个json类型的JavaBean(单一对象或集合)可见的属性不同
+不同请求返回同一个json类型的JavaBean(单一对象或集合)可见的属性不同    
 .使用接口来声明多个视图    
 .在对象的get方法上指定视图,使用lombok就标注在属性上    
 .在Controller的方法上指定视图      
