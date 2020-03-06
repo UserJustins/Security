@@ -17,6 +17,4 @@ spring:
 #imooc.security.code.image.length = 6
 #imooc.security.code.image.width = 100
 #imooc.security.code.image.url = /user/*
-security:
-  basic:
-    enabled: false
+
