@@ -1,6 +1,7 @@
 package com.duheng.security.config;
 
 import com.duheng.security.properties.SecurityProperties;
+import com.duheng.security.validCodeImage.ValidCodeImageFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /*************************
  Author: 杜衡
@@ -68,7 +70,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter{
      */
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.formLogin()//指定使用表单的认证方式 UsernamePasswordAuthenticationFilter
+        ValidCodeImageFilter validCodeImageFilter = new ValidCodeImageFilter();
+        validCodeImageFilter.setAuthenticationFailureHandler(iduAuthenticationFailureHandler);
+        http.addFilterBefore(validCodeImageFilter,UsernamePasswordAuthenticationFilter.class)
+                .formLogin()//指定使用表单的认证方式 UsernamePasswordAuthenticationFilter
                 .loginPage("/authentication/require")//认证去Handler进行处理
                 .loginProcessingUrl("/authentication/form")
                 .successHandler(iduAuthenticationSuccessHandler)
@@ -76,7 +81,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter{
                 .and()
                 .authorizeRequests()
                 .antMatchers("/authentication/require",
-                        securityProperties.getBrowser().getLoginPage()).permitAll()//指定放行的资源
+                        securityProperties.getBrowser().getLoginPage(),
+                        "/image/code").permitAll()//指定放行的资源
                 .anyRequest()
                 .authenticated()
                 .and()
