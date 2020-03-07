@@ -11,10 +11,13 @@ spring:
   session:
     store-type: none
 
-#imooc.security.browser.loginPage = /demo-signIn.html
-#imooc.security.browser.loginType = REDIRECT
-
+#idu.security.browser.loginPage 认证登录页面,默认/defaultLogin.html
+#idu.security.browser.loginResponseType 认证登录响应方式,默认JSON
+idu:
+  security:
+    browser:
+      loginResponseType: JSON
+      loginPage: /defaultLogin.html
 #imooc.security.code.image.length = 6
 #imooc.security.code.image.width = 100
 #imooc.security.code.image.url = /user/*
-

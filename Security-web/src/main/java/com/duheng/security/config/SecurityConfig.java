@@ -1,22 +1,37 @@
 package com.duheng.security.config;
 
+import com.duheng.security.properties.SecurityProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 /*************************
  Author: 杜衡
  Date: 2020/3/5
  Describe:
-    认证代码片段存在两个问题
- 1、Restful请求需要认证不应该返回一个登录页面的地址，应该是响应的状态码
- 2、登录页面需要进行处理，开发者可以对登录页面随意设置，没有的话使用默认的
+    资源是否需要认证由SpringSecurity决定，如果需要进行认证就会根据loginPage进行跳转；
+ 跳转之前SpringSecurity将当前请求封装到HttpSessionRequestCache。
+
+
  *************************/
 @Configuration
 public class SecurityConfig extends WebSecurityConfigurerAdapter{
+
+    @Autowired
+    private SecurityProperties securityProperties;
+
+    //自定义登录成功处理器
+    @Autowired
+    private AuthenticationSuccessHandler iduAuthenticationSuccessHandler; //自定义登录成功处理器
+    //自定义登录失败处理器
+    @Autowired
+    private AuthenticationFailureHandler iduAuthenticationFailureHandler;
     /**
      * 密码的加密算法
      * @return
@@ -54,11 +69,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter{
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.formLogin()//指定使用表单的认证方式 UsernamePasswordAuthenticationFilter
-                .loginPage("/login.html")//指定基于表单的登录页面(页面名称)
+                .loginPage("/authentication/require")//认证去Handler进行处理
                 .loginProcessingUrl("/authentication/form")
+                .successHandler(iduAuthenticationSuccessHandler)
+                .failureHandler(iduAuthenticationFailureHandler)
                 .and()
                 .authorizeRequests()
-                .antMatchers("/login.html").permitAll()//指定放行的资源
+                .antMatchers("/authentication/require",
+                        securityProperties.getBrowser().getLoginPage()).permitAll()//指定放行的资源
                 .anyRequest()
                 .authenticated()
                 .and()

@@ -154,8 +154,7 @@ public class MyConstraint implements ConstraintValidator<MyValidAnnotation,Objec
 # 二、使用SpringSecurity开发基于表单的认证
 **认证、授权、攻击防护**
 ## 1、认证
-### (1)、自定义表单登录页面，表单的action="/authentication/form"
-### (2)、密码加密处理
+### (1)、自定义表单登录页面
 ```java
 @Configuration
 public class SecurityConfig extends WebSecurityConfigurerAdapter{
@@ -206,6 +205,130 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter{
                 .and()
                 .csrf().disable();
 
+    }
+}
+
+```
+代码重构，loginPage()去往一个Handler，对引发跳转的URL进行.HTML区分，进而对不同的请求进行不同的响应；
+其中登录页面可以进行自行配置，当然也存在默认的设置
+### (2)、自定义认证成功和失败处理器
+  SpringSecurity默认认证成功后跳回引发认证的页面、认证错误跳转到认证失败的页面,现在进行响应json和页面
+的兼顾处理,枚举LoginResponseType定义redirect和json两实例由属性idu.security.browser.loginResponseType
+决定认证之后到底是响应页面还是响应json，当然能做到这样，与自定义认证成功和失败处理器有很大的关系
+
+```java
+
+package com.duheng.security.component;
+
+import com.duheng.security.enumeration.LoginResponseType;
+import com.duheng.security.properties.SecurityProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/*************************
+ Describe:
+    登录认证成功后，Security默认跳转到引发认证的请求
+    自定义IduAuthenticationSuccessHandler实现AuthenticationSuccessHandler：登录成功后返回json成功信息
+
+
+ Authentication：
+    封装了认证通过后相关的信息，最主要的就是UserDetails
+ ObjectMapper:
+    将对象转换成Json对象
+ SavedRequestAwareAuthenticationSuccessHandler
+    AuthenticationSuccessHandler的一个实现类，SpringBoot默认认证成功处理
+ *************************/
+@Component
+public class IduAuthenticationSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+    @Autowired
+    private SecurityProperties securityProperties;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Override
+    public void onAuthenticationSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication)
+            throws IOException, ServletException {
+        logger.info("登录成功！");
+        if ( LoginResponseType.JSON.equals(securityProperties.getBrowser().getLoginResponseType())){
+
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(authentication));
+        }else{
+            super.onAuthenticationSuccess(request,response,authentication);
+        }
+    }
+}
+
+```  
+```java
+
+package com.duheng.security.component;
+
+import com.duheng.security.enumeration.LoginResponseType;
+import com.duheng.security.properties.SecurityProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
+import org.springframework.stereotype.Component;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+/*************************
+ Describe:
+    自定义登录认证失败处理器 实现 AuthenticationFailureHandler
+    SpringBoot默认的登录失败处理器类 SimpleUrlAuthenticationFailureHandler
+
+ *************************/
+@Component
+public class IduAuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
+
+    Logger logger = LoggerFactory.getLogger(getClass());
+
+    @Autowired
+    private SecurityProperties securityProperties;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Override
+    public void onAuthenticationFailure(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            AuthenticationException exception)
+            throws IOException, ServletException {
+
+        logger.info("登录失败！");
+        if (LoginResponseType.JSON.equals(securityProperties.getBrowser().getLoginResponseType())) {
+            //自定义的登录失败处理
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(exception));
+        }else{
+            //SpringBoot默认的登录认证失败处理
+            super.onAuthenticationFailure(request,response,exception);
+        }
     }
 }
 
